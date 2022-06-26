@@ -63,98 +63,19 @@ impl OperationType {
 }
 
 
-pub fn calculate_expression(expression: &str) -> BigDecimal {
+pub fn calculate_expression(expression: &str) -> f64 {
     let re = Regex::new(r"^(\s*)(-)*(\s*)\d+(\.\d+)*((\s*)(?:[\^\*//+-](\s*)(-)*(\s*)\d+(\.\d+)*))+$").unwrap();
 
     if !re.is_match(expression) {
         //println!("Error, wrong syntax");
     };
 
-    let re_number = Regex::new(r"(\d+(\.\d+)*)|(\(([^)]*)\))").unwrap();
+    let re_tag = Regex::new(r"(\d+(\.\d+)*)|(\(([^)]*)\))|[\^\*//+-]").unwrap();
     let re_p = Regex::new(r"(\(([^)]*)\))").unwrap();
     let re_minus_before_number = Regex::new(r"[\^\*//+-](\s*)[-]").unwrap();
     let re_operator = Regex::new(r"[\^\*//+-](\s*)((\d+(\.\d+)*)|(\(([^)]*)\)))").unwrap();
 
-    let mut number_sequence: Vec<BigDecimal> = Vec::new();
-    let mut operation_sequence: Vec<OperationType> = Vec::new();
+    return 1.0;
 
 
-    let mut last_number_position: usize = 0;
-    for (pos, mat) in re_number.find_iter(expression).enumerate() {
-        if re_p.is_match(mat.as_str()) {
-            number_sequence.push(calculate_expression(&expression[mat.start()+1..mat.end()-1]));
-        } else {
-            number_sequence.push(BigDecimal::from_str(mat.as_str()).unwrap());
-        }
-        println!("{}", &expression[last_number_position..mat.start()]);
-        if re_minus_before_number.is_match(&expression[last_number_position..mat.start()]) {
-            println!("match {}", number_sequence[pos]);
-            number_sequence[pos] = -number_sequence[pos].clone();
-        }
-        last_number_position = mat.end();
-    }
-
-    println!("{:?}", number_sequence);
-
-
-    for mat in re_operator.find_iter(expression) {
-        if mat.start()<re_number.find(expression).unwrap().start() {
-            continue;
-        }
-        operation_sequence.push(OperationType::parse(expression.chars().nth(mat.start()).unwrap()));
-    }
-
-
-
-    let mut result: BigDecimal;
-
-    let mut i: u8;
-    let mut current_op_pos: u8;
-
-    loop {
-
-        i = 255;
-        current_op_pos = 0;
-
-        for (pos, op) in operation_sequence.iter().enumerate() {
-            match op {
-                OperationType::Power => {
-                    current_op_pos = pos as u8;
-                    i=0;
-                    continue;
-                },
-                OperationType::Multiply | OperationType::Divide => {
-                    if i>0 {
-                        current_op_pos = pos as u8;
-                        i=1;
-                    }
-                    continue;
-                },
-                OperationType::Subtract => {
-                    if i>1 {
-                        current_op_pos = pos as u8;
-                        i=2;
-                    }
-                    continue;
-                },
-                OperationType::Add => {
-                    if i>2 {
-                        current_op_pos = pos as u8;
-                        i=3;
-                    }
-                    continue;
-                }
-            }
-        }
-
-        result = operation_sequence[current_op_pos as usize].count(&number_sequence[current_op_pos as usize], &number_sequence[(current_op_pos+1) as usize]);
-        number_sequence.remove((current_op_pos+1) as usize);
-        number_sequence[current_op_pos as usize] = result;
-        operation_sequence.remove(current_op_pos as usize);
-        println!("{:?}", number_sequence);
-
-        if operation_sequence.len() == 0 {
-            break number_sequence[0].clone();
-        }
-    }
 }
