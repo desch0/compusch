@@ -111,10 +111,17 @@ fn handle_pow(sequence: &mut Vec<Tag>) {
                 println!("catched");
                 match &sequence[pos-1] {
                     Tag::Number(value) => {
-
                         match &sequence[pos+1] {
                             Tag::Number(value1) => {
-                                sequence[pos-1] = Tag::Number(OperationType::pow(value.clone(), value1.to_f64().unwrap()));
+                                let mut result = OperationType::pow(value.clone(), value1.to_f64().unwrap());
+                                if value < &BigDecimal::from_f64(0.0).unwrap() && sequence[0..pos-1].iter().any(|s| match s {
+                                    Tag::Number(_) => true,
+                                    _ => false
+                                }) {
+                                    sequence[pos-1] = Tag::Number(-result);
+                                } else {
+                                    sequence[pos-1] = Tag::Number(result);
+                                }
                                 sequence.remove(pos+1);
                                 sequence.remove(pos);
                             },
@@ -131,6 +138,19 @@ fn handle_pow(sequence: &mut Vec<Tag>) {
         pos -= 1;
         if pos == 0 { break; }
     }
+}
+
+fn final_sum(sequence: &mut Vec<Tag>) -> BigDecimal {
+    let mut result = BigDecimal::from_f64(0.0).unwrap();
+
+    for i in 0..sequence.len() {
+        match &sequence[i] {
+            Tag::Number(value) => result += value,
+            _ => ()
+        }
+    }
+
+    return result;
 }
 
 pub fn calculate_expression(expression: &str) -> f64 {
@@ -158,16 +178,19 @@ pub fn calculate_expression(expression: &str) -> f64 {
         }
     }
 
+    println!("sequence: {:?}", sequence);
     handle_add_sub(&mut sequence);
+    println!("sequence: {:?}", sequence);
     handle_pow(&mut sequence);
-
+    println!("sequence: {:?}", sequence);
+    println!("{}", final_sum(&mut sequence));
     /*
     println!("{:?}", to_delete);
     for (pos, i) in to_delete.iter().enumerate() {
         sequence.remove(*i-pos);
     }*/
 
-    println!("sequence after: {:?}", sequence);
+    println!("sequence: {:?}", sequence);
 
 
     return 1.0;
