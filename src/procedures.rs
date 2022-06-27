@@ -4,6 +4,14 @@ use bigdecimal::FromPrimitive;
 use bigdecimal::ToPrimitive;
 use regex::Regex;
 
+
+#[derive(Debug)]
+enum Tag {
+    Number(BigDecimal),
+    Operator(OperationType)
+}
+
+#[derive(Debug)]
 enum OperationType {
     Add,
     Subtract,
@@ -71,9 +79,69 @@ pub fn calculate_expression(expression: &str) -> f64 {
     };
 
     let re_tag = Regex::new(r"(\d+(\.\d+)*)|(\(([^)]*)\))|[\^\*//+-]").unwrap();
+    let re_number = Regex::new(r"(\d+(\.\d+)*)").unwrap();
+    let re_operator = Regex::new(r"[\^\*//+-]").unwrap();
     let re_p = Regex::new(r"(\(([^)]*)\))").unwrap();
     let re_minus_before_number = Regex::new(r"[\^\*//+-](\s*)[-]").unwrap();
-    let re_operator = Regex::new(r"[\^\*//+-](\s*)((\d+(\.\d+)*)|(\(([^)]*)\)))").unwrap();
+
+
+    let mut sequence: Vec<Tag> = Vec::new();
+
+    for tag in re_tag.find_iter(expression) {
+        if re_number.is_match(tag.as_str()) {
+            sequence.push(Tag::Number(BigDecimal::from_str(tag.as_str()).unwrap()));
+        }
+        if re_operator.is_match(tag.as_str()) {
+            sequence.push(Tag::Operator(OperationType::parse(tag.as_str().chars().nth(0).unwrap())));
+        }
+    }
+
+    println!("sequence before: {:?}", sequence);
+
+    let mut to_delete: Vec<usize> = Vec::new();
+    let mut pos = 0;
+    let mut deleted = 0;
+    loop {
+        match &sequence[pos] {
+            Tag::Number(number) => {
+
+            },
+            Tag::Operator(operator) => {
+                match operator {
+                    OperationType::Add => {
+                        sequence.remove(pos);
+                        deleted += 1;
+                    },
+                    OperationType::Subtract => {
+                        match &sequence[pos+1] {
+                            Tag::Number(value) => {
+                                    sequence[pos+1] = Tag::Number(-value);
+                            },
+                            Tag::Operator(OperationType::Subtract) => {
+                                sequence.remove(pos+1);
+                                deleted += 1;
+                            }
+                            _ => ()
+                        }
+                        sequence.remove(pos);
+                        deleted += 1;
+                    },
+                    _ => ()
+                }
+            }
+        }
+        pos += 1;
+        if pos >= sequence.len()-deleted { break; }
+    }
+
+    /*
+    println!("{:?}", to_delete);
+    for (pos, i) in to_delete.iter().enumerate() {
+        sequence.remove(*i-pos);
+    }*/
+
+    println!("sequence after: {:?}", sequence);
+
 
     return 1.0;
 
