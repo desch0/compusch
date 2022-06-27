@@ -70,6 +70,68 @@ impl OperationType {
     }
 }
 
+fn handle_add_sub(sequence: &mut Vec<Tag>) {
+    let mut pos = 0;
+    loop {
+        match &sequence[pos] {
+            Tag::Number(number) => {
+
+            },
+            Tag::Operator(operator) => {
+                match operator {
+                    OperationType::Add => {
+                        sequence.remove(pos);
+                    },
+                    OperationType::Subtract => {
+                        match &sequence[pos+1] {
+                            Tag::Number(value) => {
+                                    sequence[pos+1] = Tag::Number(-value);
+                            },
+                            Tag::Operator(OperationType::Subtract) => {
+                                sequence.remove(pos+1);
+                            }
+                            _ => ()
+                        }
+                        sequence.remove(pos);
+                    },
+                    _ => ()
+                }
+            }
+        }
+        pos += 1;
+        if pos >= sequence.len() { break; }
+    }
+}
+
+fn handle_pow(sequence: &mut Vec<Tag>) {
+    let mut pos = sequence.len()-1;
+    loop {
+        match sequence[pos] {
+            Tag::Operator(OperationType::Power) => {
+                println!("catched");
+                match &sequence[pos-1] {
+                    Tag::Number(value) => {
+
+                        match &sequence[pos+1] {
+                            Tag::Number(value1) => {
+                                sequence[pos-1] = Tag::Number(OperationType::pow(value.clone(), value1.to_f64().unwrap()));
+                                sequence.remove(pos+1);
+                                sequence.remove(pos);
+                            },
+                            _ => ()
+                        }
+
+                    },
+                    _ => ()
+                }
+
+            },
+            _ => ()
+        }
+        pos -= 1;
+        if pos == 0 { break; }
+    }
+}
 
 pub fn calculate_expression(expression: &str) -> f64 {
     let re = Regex::new(r"^(\s*)(-)*(\s*)\d+(\.\d+)*((\s*)(?:[\^\*//+-](\s*)(-)*(\s*)\d+(\.\d+)*))+$").unwrap();
@@ -96,43 +158,8 @@ pub fn calculate_expression(expression: &str) -> f64 {
         }
     }
 
-    println!("sequence before: {:?}", sequence);
-
-    let mut to_delete: Vec<usize> = Vec::new();
-    let mut pos = 0;
-    let mut deleted = 0;
-    loop {
-        match &sequence[pos] {
-            Tag::Number(number) => {
-
-            },
-            Tag::Operator(operator) => {
-                match operator {
-                    OperationType::Add => {
-                        sequence.remove(pos);
-                        deleted += 1;
-                    },
-                    OperationType::Subtract => {
-                        match &sequence[pos+1] {
-                            Tag::Number(value) => {
-                                    sequence[pos+1] = Tag::Number(-value);
-                            },
-                            Tag::Operator(OperationType::Subtract) => {
-                                sequence.remove(pos+1);
-                                deleted += 1;
-                            }
-                            _ => ()
-                        }
-                        sequence.remove(pos);
-                        deleted += 1;
-                    },
-                    _ => ()
-                }
-            }
-        }
-        pos += 1;
-        if pos >= sequence.len()-deleted { break; }
-    }
+    handle_add_sub(&mut sequence);
+    handle_pow(&mut sequence);
 
     /*
     println!("{:?}", to_delete);
