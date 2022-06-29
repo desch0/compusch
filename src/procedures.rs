@@ -4,7 +4,6 @@ use bigdecimal::FromPrimitive;
 use bigdecimal::ToPrimitive;
 use regex::Regex;
 
-
 #[derive(Debug)]
 enum Tag {
     Number(BigDecimal),
@@ -59,8 +58,7 @@ impl OperationType {
 }
 
 
-
-fn tear_pow(sequence: &mut Vec<Tag>) {
+fn tear_pow(sequence: &mut Vec<Tag>) -> Result<(), String> {
     let mut pos = sequence.len()-1;
     loop {
         match sequence[pos] {
@@ -82,24 +80,25 @@ fn tear_pow(sequence: &mut Vec<Tag>) {
                                     },
                                     _ => ()
                                 }
-                            }
-                            _ => ()
+                            },
+                            _ => return Err("error: wrong syntax".to_string())
                         }
 
                     },
-                    _ => ()
+                    _ => return Err("error: wrong syntax".to_string())
                 }
 
             },
             _ => ()
         }
-        if pos <= 0 { break; }
+        if pos == 0 { break; }
         pos -= 1;
     }
+    Ok(())
 }
 
 
-fn tear_add_and_sub(sequence: &mut Vec<Tag>) {
+fn tear_add_and_sub(sequence: &mut Vec<Tag>) -> Result<(), String> {
     let mut pos = 0;
     loop {
         match &sequence[pos] {
@@ -116,7 +115,7 @@ fn tear_add_and_sub(sequence: &mut Vec<Tag>) {
                             Tag::Operator(OperationType::Subtract) => {
                                 sequence.remove(pos+1);
                             }
-                            _ => ()
+                            _ => return Err("error: wrong syntax".to_string())
                         }
                         sequence.remove(pos);
                     },
@@ -128,14 +127,14 @@ fn tear_add_and_sub(sequence: &mut Vec<Tag>) {
         pos += 1;
         if pos >= sequence.len() { break; }
     }
+    Ok(())
 }
 
 
-fn tear_mult_and_div(sequence: &mut Vec<Tag>) {
+fn tear_mult_and_div(sequence: &mut Vec<Tag>) -> Result<(), String> {
     let mut pos = sequence.len()-1;
     loop {
         match &sequence[pos] {
-            Tag::Number(number) => (),
             Tag::Operator(operator) => {
                 match &sequence[pos-1] {
                     Tag::Number(value) => {
@@ -155,18 +154,19 @@ fn tear_mult_and_div(sequence: &mut Vec<Tag>) {
                                     _ => ()
                                 }
                             },
-                            _ => ()
+                            _ => return Err("error: wrong syntax".to_string())
                         }
                     },
-                    _ => ()
+                    _ => return Err("error: wrong syntax".to_string())
                 }
 
-
-            }
+            },
+            _ => ()
         }
         if pos == 0 { break; }
         pos -= 1;
     }
+    Ok(())
 }
 
 
@@ -176,8 +176,7 @@ fn take_sum(sequence: &mut Vec<Tag>) -> BigDecimal {
     for i in 0..sequence.len() {
         match &sequence[i] {
             Tag::Number(value) => {
-			result += value;
-			
+			result += value;	
 		}
             _ => ()
         }
@@ -187,7 +186,7 @@ fn take_sum(sequence: &mut Vec<Tag>) -> BigDecimal {
 }
 
 
-pub fn calculate_expression(expression: &str) -> BigDecimal {
+pub fn calculate_expression(expression: &str) -> Result<BigDecimal, String> {
     let re_tag = Regex::new(r"(\d+(\.\d+)*)|(\(([^)]*)\))|[\^\*//+-]").unwrap();
     let re_number = Regex::new(r"(\d+(\.\d+)*)").unwrap();
     let re_operator = Regex::new(r"[\^\*//+-]").unwrap();
@@ -203,8 +202,18 @@ pub fn calculate_expression(expression: &str) -> BigDecimal {
         }
     }
 
-    tear_pow(&mut sequence);
-    tear_add_and_sub(&mut sequence);
-    tear_mult_and_div(&mut sequence); 
-    return take_sum(&mut sequence);
+    match tear_pow(&mut sequence) {
+        Ok(_) => (),
+        Err(e) => return Err(e)
+    }
+    match tear_add_and_sub(&mut sequence) {
+        Ok(_) => (),
+        Err(e) => return Err(e)
+    }
+    match tear_mult_and_div(&mut sequence) {
+        Ok(_) => (),
+        Err(e) => return Err(e)
+    }
+    Ok(take_sum(&mut sequence))
 }
+    

@@ -10,7 +10,10 @@ fn main() {
         print!("   &>   ");
         io::Write::flush(&mut io::stdout()).unwrap();
         io::stdin().read_line(&mut cmd).unwrap();
-        println!("    {}", procedures::calculate_expression(&cmd[0..cmd.len()-2]));
+        match procedures::calculate_expression(&cmd[0..cmd.len()-2]) {
+            Ok(result) => println!("    {}", result),
+            Err(e) => println!("    [ERROR] {}", e)
+        }
         cmd.clear();
     }
 }
