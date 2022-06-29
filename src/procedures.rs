@@ -34,18 +34,6 @@ impl OperationType {
     }
 
 
-    fn count(&self, x: &BigDecimal, y: &BigDecimal) -> BigDecimal {
-        match self {
-            OperationType::Power => OperationType::pow(x.clone(), y.to_f64().unwrap()),
-            OperationType::Multiply => x*y,
-            OperationType::Divide => x/y,
-            OperationType::Add => x+y,
-            OperationType::Subtract => x-y
-        }
-
-    }
-
-
     fn pow(num: BigDecimal, p: f64) -> BigDecimal {
         if p==0.0 {
             return BigDecimal::from_str("1").unwrap();
@@ -70,13 +58,51 @@ impl OperationType {
     }
 }
 
-fn handle_add_sub(sequence: &mut Vec<Tag>) {
+
+
+fn tear_pow(sequence: &mut Vec<Tag>) {
+    let mut pos = sequence.len()-1;
+    loop {
+        match sequence[pos] {
+            Tag::Operator(OperationType::Power) => {
+                match &sequence[pos-1] {
+                    Tag::Number(value) => {
+                        match &sequence[pos+1] {
+                            Tag::Number(value1) => {
+                                sequence[pos-1] = Tag::Number(OperationType::pow(value.clone(), value1.to_f64().unwrap()));
+                                sequence.remove(pos+1);
+                                sequence.remove(pos);
+                            },
+                            Tag::Operator(OperationType::Subtract) => {
+                                match &sequence[pos+2] {
+                                    Tag::Number(value2) => {
+                                        sequence[pos+1] = Tag::Number(-value2);
+                                        sequence.remove(pos+2);
+                                        pos += 1
+                                    },
+                                    _ => ()
+                                }
+                            }
+                            _ => ()
+                        }
+
+                    },
+                    _ => ()
+                }
+
+            },
+            _ => ()
+        }
+        if pos <= 0 { break; }
+        pos -= 1;
+    }
+}
+
+
+fn tear_add_and_sub(sequence: &mut Vec<Tag>) {
     let mut pos = 0;
     loop {
         match &sequence[pos] {
-            Tag::Number(number) => {
-
-            },
             Tag::Operator(operator) => {
                 match operator {
                     OperationType::Add => {
@@ -96,56 +122,63 @@ fn handle_add_sub(sequence: &mut Vec<Tag>) {
                     },
                     _ => ()
                 }
-            }
+            },
+            _ => ()
         }
         pos += 1;
         if pos >= sequence.len() { break; }
     }
 }
 
-fn handle_pow(sequence: &mut Vec<Tag>) {
+
+fn tear_mult_and_div(sequence: &mut Vec<Tag>) {
     let mut pos = sequence.len()-1;
     loop {
-        match sequence[pos] {
-            Tag::Operator(OperationType::Power) => {
-                println!("catched");
+        match &sequence[pos] {
+            Tag::Number(number) => (),
+            Tag::Operator(operator) => {
                 match &sequence[pos-1] {
                     Tag::Number(value) => {
                         match &sequence[pos+1] {
                             Tag::Number(value1) => {
-                                let mut result = OperationType::pow(value.clone(), value1.to_f64().unwrap());
-                                if value < &BigDecimal::from_f64(0.0).unwrap() && sequence[0..pos-1].iter().any(|s| match s {
-                                    Tag::Number(_) => true,
-                                    _ => false
-                                }) {
-                                    sequence[pos-1] = Tag::Number(-result);
-                                } else {
-                                    sequence[pos-1] = Tag::Number(result);
+                                match operator {
+                                    OperationType::Multiply => {
+                                        sequence[pos-1] = Tag::Number(value*value1);
+                                        sequence.remove(pos+1);
+                                        sequence.remove(pos);
+                                    },
+                                    OperationType::Divide => {
+                                        sequence[pos-1] = Tag::Number(value/value1);
+                                        sequence.remove(pos+1);
+                                        sequence.remove(pos);
+                                    },
+                                    _ => ()
                                 }
-                                sequence.remove(pos+1);
-                                sequence.remove(pos);
                             },
                             _ => ()
                         }
-
                     },
                     _ => ()
                 }
 
-            },
-            _ => ()
+
+            }
         }
-        pos -= 1;
         if pos == 0 { break; }
+        pos -= 1;
     }
 }
 
-fn final_sum(sequence: &mut Vec<Tag>) -> BigDecimal {
+
+fn take_sum(sequence: &mut Vec<Tag>) -> BigDecimal {
     let mut result = BigDecimal::from_f64(0.0).unwrap();
 
     for i in 0..sequence.len() {
         match &sequence[i] {
-            Tag::Number(value) => result += value,
+            Tag::Number(value) => {
+			result += value;
+			
+		}
             _ => ()
         }
     }
@@ -153,19 +186,11 @@ fn final_sum(sequence: &mut Vec<Tag>) -> BigDecimal {
     return result;
 }
 
-pub fn calculate_expression(expression: &str) -> f64 {
-    let re = Regex::new(r"^(\s*)(-)*(\s*)\d+(\.\d+)*((\s*)(?:[\^\*//+-](\s*)(-)*(\s*)\d+(\.\d+)*))+$").unwrap();
 
-    if !re.is_match(expression) {
-        //println!("Error, wrong syntax");
-    };
-
+pub fn calculate_expression(expression: &str) -> BigDecimal {
     let re_tag = Regex::new(r"(\d+(\.\d+)*)|(\(([^)]*)\))|[\^\*//+-]").unwrap();
     let re_number = Regex::new(r"(\d+(\.\d+)*)").unwrap();
     let re_operator = Regex::new(r"[\^\*//+-]").unwrap();
-    let re_p = Regex::new(r"(\(([^)]*)\))").unwrap();
-    let re_minus_before_number = Regex::new(r"[\^\*//+-](\s*)[-]").unwrap();
-
 
     let mut sequence: Vec<Tag> = Vec::new();
 
@@ -178,22 +203,8 @@ pub fn calculate_expression(expression: &str) -> f64 {
         }
     }
 
-    println!("sequence: {:?}", sequence);
-    handle_add_sub(&mut sequence);
-    println!("sequence: {:?}", sequence);
-    handle_pow(&mut sequence);
-    println!("sequence: {:?}", sequence);
-    println!("{}", final_sum(&mut sequence));
-    /*
-    println!("{:?}", to_delete);
-    for (pos, i) in to_delete.iter().enumerate() {
-        sequence.remove(*i-pos);
-    }*/
-
-    println!("sequence: {:?}", sequence);
-
-
-    return 1.0;
-
-
+    tear_pow(&mut sequence);
+    tear_add_and_sub(&mut sequence);
+    tear_mult_and_div(&mut sequence); 
+    return take_sum(&mut sequence);
 }
